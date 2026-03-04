@@ -90,6 +90,28 @@ def main():
         winners = ["All"] + sorted(world_series["winner"].dropna().unique().tolist())
         event_filter = st.sidebar.selectbox("World Series winner", winners)
 
+    # Before/after data cleaning (rubric: show cleaning stages)
+    with st.expander("Data cleaning: before & after"):
+        st.markdown("Raw data from the database may have mixed types (e.g. year and HR as text) or missing values. We clean by converting to numeric and dropping invalid rows.")
+        if not hitting.empty and "year" in hitting.columns and "hr" in hitting.columns:
+            show_cols = [c for c in ["year", "player", "hr", "rbi"] if c in hitting.columns]
+            sample = hitting.head(15)[show_cols].copy()
+            col_before, col_after = st.columns(2)
+            with col_before:
+                st.caption("**Before:** Raw types (year, hr as stored in DB)")
+                st.dataframe(sample, use_container_width=True)
+            # After: same data with numeric conversion and dropna
+            cleaned = hitting.copy()
+            cleaned["year"] = pd.to_numeric(cleaned["year"], errors="coerce")
+            cleaned["hr"] = pd.to_numeric(cleaned["hr"], errors="coerce")
+            cleaned = cleaned.dropna(subset=["year", "hr"])
+            sample_after = cleaned.head(15)[show_cols].copy()
+            with col_after:
+                st.caption("**After:** Numeric year/hr, missing rows removed")
+                st.dataframe(sample_after, use_container_width=True)
+        else:
+            st.info("Hitting table missing required columns for this demo.")
+
     # Visualization 1: HR by year (bar or line)
     st.header("1. Home runs by year (top leaders)")
     if not hitting.empty and "year" in hitting.columns and "hr" in hitting.columns:

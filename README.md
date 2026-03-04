@@ -91,6 +91,12 @@ Run locally:
 streamlit run 4_dashboard.py
 ```
 
+### Screenshot
+
+*(Add a file named `screenshot.png` in the repo root to display the dashboard screenshot here.)*
+
+![Dashboard screenshot](screenshot.png)
+
 ## Deployment
 
 - **Streamlit Cloud:** Push this repo to GitHub, then connect it at [share.streamlit.io](https://share.streamlit.io). Add the repo and set the run command to `streamlit run 4_dashboard.py`. Ensure `data/mlb_history.db` and any needed CSVs are in the repo or generated in a build step.
