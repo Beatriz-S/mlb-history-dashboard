@@ -95,7 +95,7 @@ def main():
         st.markdown("Raw data from the database may have mixed types (e.g. year and HR as text) or missing values. We clean by converting to numeric and dropping invalid rows.")
         if not hitting.empty and "year" in hitting.columns and "hr" in hitting.columns:
             show_cols = [c for c in ["year", "player", "hr", "rbi"] if c in hitting.columns]
-            # Use the same 15 rows for both panels so we show how the same records transform
+            # Same 15 records in both panels; after cleaning, dropna() may remove invalid rows so "After" can have fewer rows
             sample_before = hitting.head(15)[show_cols].copy()
             sample_after = sample_before.copy()
             sample_after["year"] = pd.to_numeric(sample_after["year"], errors="coerce")
@@ -106,7 +106,7 @@ def main():
                 st.caption("**Before:** Raw types (year, hr as stored in DB)")
                 st.dataframe(sample_before, use_container_width=True)
             with col_after:
-                st.caption("**After:** Same rows — numeric year/hr, invalid rows removed")
+                st.caption("**After:** Same 15 records; numeric conversion + dropna (invalid year/hr). Fewer rows if any were removed.")
                 st.dataframe(sample_after, use_container_width=True)
         else:
             st.info("Hitting table missing required columns for this demo.")
