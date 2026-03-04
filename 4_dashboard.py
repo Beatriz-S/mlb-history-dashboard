@@ -124,6 +124,7 @@ def main():
         ]
         if not df_hr.empty:
             agg = df_hr.groupby("year")["hr"].max().reset_index()
+            agg["year"] = agg["year"].astype(int)
             fig1 = px.bar(
                 agg,
                 x="year",
@@ -149,6 +150,7 @@ def main():
                 ws = ws[ws["winner"] == event_filter]
             if not ws.empty:
                 ws = ws.copy()
+                ws["year"] = ws["year"].astype(int)
                 ws["count"] = 1
                 fig2 = px.bar(
                     ws,
@@ -174,6 +176,8 @@ def main():
         joined["year"] = pd.to_numeric(joined["year"], errors="coerce")
         joined = joined.dropna(subset=["year", "hr"])
         if not joined.empty:
+            joined = joined.copy()
+            joined["year"] = joined["year"].astype(int)
             fig3 = px.scatter(
                 joined,
                 x="year",
