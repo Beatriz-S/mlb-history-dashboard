@@ -16,6 +16,15 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 DB_PATH = DATA_DIR / "mlb_history.db"
 
 
+def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize column names to lowercase so 'Year'/'year' and 'HR'/'hr' both work."""
+    if df is None or df.empty:
+        return df
+    df = df.copy()
+    df.columns = [str(c).strip().lower() for c in df.columns]
+    return df
+
+
 @st.cache_data
 def load_table(table_name: str) -> pd.DataFrame:
     if not DB_PATH.exists():
@@ -27,7 +36,7 @@ def load_table(table_name: str) -> pd.DataFrame:
         df = pd.DataFrame()
     finally:
         conn.close()
-    return df
+    return _normalize_columns(df)
 
 
 @st.cache_data
@@ -45,10 +54,20 @@ def load_joined(years: tuple = (1900, 2030)) -> pd.DataFrame:
         """
         df = pd.read_sql_query(sql, conn, params=(years[0], years[1]))
     except Exception:
-        df = pd.DataFrame()
+        raise
     finally:
         conn.close()
-    return df
+    return _normalize_columns(df)
+
+
+def _year_range_hint(hitting: pd.DataFrame) -> str:
+    """Return a short hint like '1927–2022' for the year range in the hitting data."""
+    if hitting.empty or "year" not in hitting.columns:
+        return "unknown"
+    y = pd.to_numeric(hitting["year"], errors="coerce").dropna()
+    if len(y) == 0:
+        return "unknown"
+    return f"{int(y.min())}–{int(y.max())}"
 
 
 def main():
@@ -133,7 +152,8 @@ def main():
             )
             st.plotly_chart(fig1, use_container_width=True)
         else:
-            st.info("No HR data in selected year range.")
+            yr_hint = _year_range_hint(hitting)
+            st.info(f"No HR data in selected year range ({year_range[0]}–{year_range[1]}). Data contains years {yr_hint}. Try expanding the year range in the sidebar.")
     else:
         st.info("Hitting table missing 'year' or 'hr' columns.")
 
@@ -159,6 +179,7 @@ def main():
                     title="World Series winner by year",
                     labels={"winner": "Winner", "year": "Year"},
                 )
+                fig2.update_layout(xaxis=dict(tickformat="d", dtick=1))
                 st.plotly_chart(fig2, use_container_width=True)
             else:
                 st.info("No World Series data in selected range.")
@@ -169,7 +190,11 @@ def main():
 
     # Visualization 3: Joint view — HR leaders and WS winner (scatter or table)
     st.header("3. Hitting leaders vs. World Series winner (by year)")
-    joined = load_joined(year_range)
+    try:
+        joined = load_joined(year_range)
+    except Exception as e:
+        st.error(f"Join failed: {e}")
+        joined = pd.DataFrame()
     if not joined.empty:
         joined["hr"] = pd.to_numeric(joined["hr"], errors="coerce")
         joined["year"] = pd.to_numeric(joined["year"], errors="coerce")
@@ -184,12 +209,23 @@ def main():
                 color="ws_winner",
                 hover_data=["player", "team", "rbi", "ws_winner", "runner_up"],
                 title="Top HR by year with World Series winner",
+                symbol="ws_winner",
+                size_max=16,
+            )
+            fig3.update_traces(
+                marker=dict(size=14, line=dict(width=2, color="white")),
+                selector=dict(mode="markers"),
+            )
+            fig3.update_layout(
+                xaxis=dict(tickformat="d", dtick=1),
+                legend=dict(title="World Series winner", orientation="h", yanchor="top", y=1.12),
             )
             st.plotly_chart(fig3, use_container_width=True)
         else:
             st.dataframe(joined.head(20))
     else:
-        st.info("Join data empty. Check table names: season_hitting_leaders, world_series.")
+        yr_hint = _year_range_hint(hitting)
+        st.info(f"No data in selected year range ({year_range[0]}–{year_range[1]}). Hitting leaders has years {yr_hint}. Try expanding the year range in the sidebar, or run the scraper to fetch more seasons.")
 
     # Extra: dynamic table based on filters
     st.header("Data table (filtered)")
